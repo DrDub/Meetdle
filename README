@@ -1,0 +1,16 @@
+Work in progress
+
+You will need:
+
+* Eclipse (tested with version 3.6)
+
+(you'll need the XML Editors from http://download.eclipse.org/releases/helios )
+
+The scala plugin for 2.8.1, available at:
+
+    http://download.scala-ide.org/nightly-update-master-2.8.1.final
+
+For the Google AppEngine back-end, the Google toolkit
+
+http://dl.google.com/eclipse/plugin/3.6
+
