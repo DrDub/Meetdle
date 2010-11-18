@@ -30,46 +30,79 @@ import java.io.{ File, PrintWriter, FileWriter, IOException }
 
 case class SimpleLogger(folder: File) extends TransactionLogger {
 
-  def pollFile(poll: Int) =
-    if (poll < 100)
+  // number of sub folders. Note: all IDs should have at least this number of characters.
+  private val LEVELS = 2
+
+  def pollFile(poll: String) =
+    if (poll.length() < LEVELS)
       new File(folder, poll + ".log")
     else
-      new File(new File(folder, (poll % 100).toString), poll + ".log")
+      poll.substring(0, LEVELS).foldLeft(folder)((x, c) => new File(x, "" + c))
 
-  def replay(poll: Int): Iterable[Transaction] = {
-    val f = pollFile(poll)
-    if (!f.exists)
-      return Nil
-    else
-      return scala.io.Source.fromFile(f).getLines.map(_.replaceAll("\n", "")).map(Transaction(_)).toIterable
+  def memoFile(poll: String) =
+    new File(pollFile(poll).getName.replaceAll(".log", ".memo"))
+
+  def replay(poll: String): Iterable[Transaction] = {
+    val f = pollFile(cleanPollStr(poll))
+    try {
+      if (f.exists)
+        return scala.io.Source.fromFile(f).getLines.map(_.replaceAll("\n", "")).map(Transaction(_)).toIterable
+    } catch {
+      case e => logger.error(e);
+    }
+    return Nil;
   }
 
-  def log(poll: Int, tr: Transaction) = {
+  def log(poll: String, tr: Transaction) = {
     try {
-      val f = pollFile(poll)
+      val f = pollFile(cleanPollStr(poll))
       if (!f.getParentFile.exists)
         f.getParentFile.mkdirs
       val pw = new PrintWriter(new FileWriter(f, true))
       pw.println(tr.toString)
       pw.close
     } catch {
-      case e: IOException => logger.error(e);
+      case e => logger.error(e);
     }
   }
 
-  def contains(poll: Int) = pollFile(poll).exists
+  def contains(poll: String) = pollFile(cleanPollStr(poll)).exists
 
-  def allPolls: Iterable[Int] = {
-    val r: Buffer[Int] = ArrayBuffer()
+  def allPolls: Iterable[String] = {
+    val r: Buffer[String] = ArrayBuffer()
     def process(root: File): Unit = {
       for (f <- folder.listFiles) {
         if (f.getName.endsWith(".log"))
-          r += f.getName.replaceAll(".log", "").toInt
+          r += f.getName.replaceAll(".log", "")
         else if (f.isDirectory)
           process(f)
       }
     }
     process(folder)
     return r
+  }
+
+  def memo(poll: String): String = {
+    val f = memoFile(cleanPollStr(poll))
+    try {
+      if (f.exists)
+        return scala.io.Source.fromFile(f).foldLeft("")((s, c) => s + c)
+    } catch {
+      case e => logger.error(e);
+    }
+    return null
+  }
+
+  def setMemo(poll: String, memo: String) = {
+    val f = memoFile(cleanPollStr(poll))
+    try {
+      if (!f.getParentFile.exists)
+        f.getParentFile.mkdirs
+      val pw = new PrintWriter(new FileWriter(f));
+      pw.print(memo);
+      pw.close
+    } catch {
+      case e => logger.error(e);
+    }
   }
 }

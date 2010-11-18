@@ -25,13 +25,19 @@
 
 package net.duboue.meetdle.core
 
+import com.pyruby.JsonGenerator
+
 object TransactionCounter {
   private var counter: Int = 0;
 
+  val lock = new Object()
+
   def inc: Int = {
-    val ret = counter;
-    counter = counter + 1;
-    return ret;
+    lock.synchronized {
+      val ret = counter;
+      counter = counter + 1;
+      return ret;
+    }
   }
 }
 
@@ -46,7 +52,7 @@ abstract sealed class Transaction {
 
   val transactionId = TransactionCounter.inc
 
-  val poll: Int
+  val poll: String
 
   def toTokens: List[String]
 
@@ -64,17 +70,17 @@ object Transaction {
   def apply(tokens: List[String]): Transaction = {
     tokens match {
       case "CreatePoll" :: poll :: title :: description :: Nil =>
-        return TrCreatePoll(poll.toInt, title, description)
+        return TrCreatePoll(poll, title, description)
 
       case "AddParticipant" :: poll :: alias :: Nil =>
-        return TrAddParticipant(poll.toInt, alias)
+        return TrAddParticipant(poll, alias)
 
       case "ModifySelection" :: poll :: alias :: index :: selection :: Nil =>
-        return TrModifySelection(poll.toInt, alias, index.toInt, selection)
+        return TrModifySelection(poll, alias, index.toInt, selection)
 
       case "ModifyOption" :: poll :: index :: dimensions :: dimensionValues :: sel :: Nil => {
         def processList(s: String): List[String] = s.split(" ").toList.map((s) => s.replaceAll("&#32;", " "))
-        return TrModifyOption(poll.toInt, index.toInt,
+        return TrModifyOption(poll, index.toInt,
           processList(dimensions), processList(dimensionValues), processList(sel))
       }
       case _ =>
@@ -83,7 +89,7 @@ object Transaction {
   }
 }
 
-case class TrCreatePoll(poll: Int, title: String, description: String) extends Transaction {
+case class TrCreatePoll(poll: String, title: String, description: String) extends Transaction {
   def toTokens = "CreatePoll" :: poll.toString :: title :: description :: Nil
 
   def execute(p: Poll): Poll = {
@@ -94,7 +100,7 @@ case class TrCreatePoll(poll: Int, title: String, description: String) extends T
 
 // add or modify, modify if index already present, if not present, it gets added at the end
 // UI sorts by different (known) dimensions
-case class TrModifyOption(poll: Int, index: Int,
+case class TrModifyOption(poll: String, index: Int,
   dimensions: List[String], dimensionValues: List[String], selectInto: List[String]) extends Transaction {
 
   private def listToString(l: List[String]) = l.map((s) => s.replaceAll(" ", "&#32;")).reduceLeft(_ + " " + _)
@@ -138,7 +144,7 @@ case class TrModifyOption(poll: Int, index: Int,
   }
 }
 
-case class TrAddParticipant(poll: Int, alias: String) extends Transaction {
+case class TrAddParticipant(poll: String, alias: String) extends Transaction {
   def toTokens = "AddParticipant" :: poll.toString :: alias :: Nil
 
   def execute(p: Poll): Poll = {
@@ -154,7 +160,7 @@ case class TrAddParticipant(poll: Int, alias: String) extends Transaction {
   }
 }
 
-case class TrModifySelection(poll: Int, alias: String, index: Int, selection: String) extends Transaction {
+case class TrModifySelection(poll: String, alias: String, index: Int, selection: String) extends Transaction {
   def toTokens = "ModifySelection" :: poll.toString :: alias :: index.toString :: selection :: Nil
 
   def execute(p: Poll): Poll = {

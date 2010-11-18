@@ -32,13 +32,13 @@ class Engine(logger: TransactionLogger) {
 
   def getLogger = logger
 
-  def contains(poll: Int) = logger.contains(poll)
+  def contains(poll: String) = logger.contains(poll)
 
-  def apply(poll: Int): Poll = {
+  def apply(poll: String): Poll = {
     return logger.replay(poll).foldLeft(emptyPoll(poll))((p, t) => t.execute(p))
   }
 
-  private def emptyPoll(poll: Int): Poll = {
+  private def emptyPoll(poll: String): Poll = {
     val now = java.lang.System.currentTimeMillis
 
     return Poll(poll, "", "", Nil, Nil, Nil, now, now, -1)

@@ -54,7 +54,7 @@ case class Option(dimensionsFrom: OptionClass, dimensionValues: List[String]) {
 
 // the OptionClasses come from options[].dimensionsFrom
 // the SelectionClasses come from options[].dimensionsFrom.selectionInto
-case class Poll(id: Int, title: String, description: String,
+case class Poll(id: String, title: String, description: String,
   options: List[Option], participants: List[Participant],
   selected: List[Tuple3[Participant, Option, Selection]],
   datePosted: Long,

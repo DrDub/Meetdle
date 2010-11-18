@@ -31,34 +31,50 @@ import scala.collection.mutable.{ Map, HashMap, Buffer, ArrayBuffer }
  * The logger signature type.
  */
 abstract class TransactionLogger {
+		
+  def cleanPollStr(poll: String) = poll.replaceAll("[^A-Za-z0-9]", "");
 	
   val logger = grizzled.slf4j.Logger("net.duboue.meetdle")
 	
-  def allPolls: Iterable[Int]
+  def allPolls: Iterable[String]
 
-  def replay(poll: Int): Iterable[Transaction]
+  def replay(poll: String): Iterable[Transaction]
 
-  def log(poll: Int, tr: Transaction)
+  def log(poll: String, tr: Transaction)
 
-  def contains(poll: Int): Boolean
+  def contains(poll: String): Boolean
+  
+  // one memo per poll, used to store extra info as set by the interface
+  // e.g., the ID of the admin URL
+  def setMemo(poll: String, memo: String): Unit
+
+  // this method result is undefined if !contains(poll)
+  def memo(poll: String): String
 }
 
 /**
  * A logger that keeps everything in memory.
  */
 object MemoryLogger extends TransactionLogger {
-  private val tsPerPoll: Map[Int, Buffer[Transaction]] = new HashMap[Int, Buffer[Transaction]]()
+  private val tsPerPoll: Map[String, Buffer[Transaction]] = new HashMap[String, Buffer[Transaction]]()
+  private val memoPerPoll: Map[String, String] = new HashMap[String,String]()
 
-  def replay(poll: Int): Iterable[Transaction] =
+  def replay(poll: String): Iterable[Transaction] =
     (if (tsPerPoll.contains(poll)) tsPerPoll(poll) else Nil)
 
-  def log(poll: Int, tr: Transaction) = {
+  def log(poll: String, tr: Transaction) = {
     if (!tsPerPoll.contains(poll))
       tsPerPoll += poll -> new ArrayBuffer[Transaction]()
     tsPerPoll(poll) += tr
   }
 
-  def contains(poll: Int) = tsPerPoll.contains(poll)
+  def contains(poll: String) = tsPerPoll.contains(poll)
 
   def allPolls = tsPerPoll.keySet.toList
+  
+  def setMemo(poll: String, memo: String) = {
+	  memoPerPoll(poll) = memo
+  }
+  
+  def memo(poll: String) = memoPerPoll(poll)
 }
