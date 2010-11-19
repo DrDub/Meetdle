@@ -100,6 +100,7 @@ case class TrCreatePoll(poll: String, title: String, description: String) extend
 
 // add or modify, modify if index already present, if not present, it gets added at the end
 // UI sorts by different (known) dimensions
+// set selectInto to empty to delete an option altogether 
 case class TrModifyOption(poll: String, index: Int,
   dimensions: List[String], dimensionValues: List[String], selectInto: List[String]) extends Transaction {
 
@@ -112,18 +113,21 @@ case class TrModifyOption(poll: String, index: Int,
     if (p.revision == -1)
       throw new MalformedTransactionException("Unknown poll " + poll)
 
-    val entry = Option(OptionClass(dimensions, SelectionClass(selectInto)), dimensionValues)
-    def newOptions: List[Option] = {
+    val entry = MOption(OptionClass(dimensions, SelectionClass(selectInto)), dimensionValues)
+    def newOptions: List[MOption] = {
       if (p.options.length > index) {
         val (l1, l2) = p.options.splitAt(index)
-        return l1 ::: List(entry) ::: l2.tail
+        if (selectInto.isEmpty)
+          return l1 ::: l2.tail
+        else
+          return l1 ::: List(entry) ::: l2.tail
       } else
         return p.options ::: List(entry)
     }
-    def newSelections: List[Tuple3[Participant, Option, Selection]] = {
+    def newSelections: List[Tuple3[Participant, MOption, Selection]] = {
       if (p.options.length > index) {
         val oldOption = p.options(index)
-        var fixed: List[Tuple3[Participant, Option, Selection]] = Nil;
+        var fixed: List[Tuple3[Participant, MOption, Selection]] = Nil;
 
         for (t <- p.selected) {
           if (t._2.equals(oldOption)) {
@@ -179,9 +183,9 @@ case class TrModifySelection(poll: String, alias: String, index: Int, selection:
         val newEntry = List((participant, option, Selection(selection, option.dimensionsFrom.selectInto)))
 
         val (l0, l1) = p.selected.partition((x) => x._1 == participant && x._2.equals(option))
-        val l2 = if (l1.isEmpty) l1 else l1.tail;
+        val l2 = if (l0.isEmpty) l0 else l0.tail;
         return Poll(poll, p.title, p.description, p.options,
-          p.participants, l0 ::: newEntry ::: l2, p.datePosted, now, transactionId)
+          p.participants, l1 ::: newEntry ::: l2, p.datePosted, now, transactionId)
     }
 
   }

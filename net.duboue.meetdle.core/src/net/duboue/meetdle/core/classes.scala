@@ -45,8 +45,8 @@ case class OptionClass(dimensions: List[String], selectInto: SelectionClass) {
 }
 
 // e.g., [day, time, [yes, no, maybe]], ["mon", "3pm"]
-case class Option(dimensionsFrom: OptionClass, dimensionValues: List[String]) {
-  def equals(o: Option) = dimensionsFrom.equals(o.dimensionsFrom) && dimensionValues.equals(o.dimensionValues)
+case class MOption(dimensionsFrom: OptionClass, dimensionValues: List[String]) {
+  def equals(o: MOption) = dimensionsFrom.equals(o.dimensionsFrom) && dimensionValues.equals(o.dimensionValues)
 }
 
 // poll is immutable, each time something changes, a new poll is created with the 
@@ -55,8 +55,8 @@ case class Option(dimensionsFrom: OptionClass, dimensionValues: List[String]) {
 // the OptionClasses come from options[].dimensionsFrom
 // the SelectionClasses come from options[].dimensionsFrom.selectionInto
 case class Poll(id: String, title: String, description: String,
-  options: List[Option], participants: List[Participant],
-  selected: List[Tuple3[Participant, Option, Selection]],
+  options: List[MOption], participants: List[Participant],
+  selected: List[Tuple3[Participant, MOption, Selection]],
   datePosted: Long,
   dateModified: Long,
   revision: Int)

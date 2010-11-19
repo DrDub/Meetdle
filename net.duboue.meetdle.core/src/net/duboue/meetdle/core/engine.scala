@@ -25,10 +25,14 @@
 
 package net.duboue.meetdle.core
 
+import java.security.MessageDigest
 /**
  * This engine relies heavily in the action log. It will replay all actions to fetch the current state of a poll.
  */
 class Engine(logger: TransactionLogger) {
+
+  val lock = new Object
+  val md5 = MessageDigest.getInstance("MD5")
 
   def getLogger = logger
 
@@ -40,7 +44,6 @@ class Engine(logger: TransactionLogger) {
 
   private def emptyPoll(poll: String): Poll = {
     val now = java.lang.System.currentTimeMillis
-
     return Poll(poll, "", "", Nil, Nil, Nil, now, now, -1)
   }
 
@@ -50,6 +53,31 @@ class Engine(logger: TransactionLogger) {
     tr.execute(poll)
     // success? log
     logger.log(tr.poll, tr)
+  }
+
+  def newPoll(base: String, title: String, description: String): String = {
+    var poll = base;
+
+    lock.synchronized {
+      var c = 0;
+      do {
+        c += 1;
+        if (c > 10) // to avoid looping forever
+          poll = poll + " "
+        poll = hash(poll).substring(0, poll.length)
+      } while (logger.contains(poll));
+      logger.log(poll, TrCreatePoll(poll, title, description))
+    }
+
+    return poll;
+  }
+
+  def hash(s: String): String = {
+    lock.synchronized {
+      md5.reset()
+      md5.update(s.getBytes)
+      return md5.digest().map(0xFF & _).map { "%02x".format(_) }.foldLeft("")(_ + _)
+    }
   }
 
 }

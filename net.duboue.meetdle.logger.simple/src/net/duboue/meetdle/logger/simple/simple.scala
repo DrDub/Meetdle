@@ -37,10 +37,12 @@ case class SimpleLogger(folder: File) extends TransactionLogger {
     if (poll.length() < LEVELS)
       new File(folder, poll + ".log")
     else
-      poll.substring(0, LEVELS).foldLeft(folder)((x, c) => new File(x, "" + c))
+      new File(poll.substring(0, LEVELS).foldLeft(folder)((x, c) => new File(x, "" + c)), poll + ".log")
 
-  def memoFile(poll: String) =
-    new File(pollFile(poll).getName.replaceAll(".log", ".memo"))
+  def memoFile(poll: String) = {
+    val pf = pollFile(poll)
+    new File(pf.getParentFile, pf.getName.replaceAll(".log", ".memo"))
+  }
 
   def replay(poll: String): Iterable[Transaction] = {
     val f = pollFile(cleanPollStr(poll))
